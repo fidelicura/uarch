@@ -1,0 +1,9 @@
+set quiet
+
+build OUT:
+	mkdir -p {{OUT}}
+	zig build-exe main.zig \
+		-O ReleaseFast \
+		-fomit-frame-pointer \
+		-femit-bin={{OUT}}/ras-influence.a
+	objdump -d {{OUT}}/ras-influence.a > {{OUT}}/ras-influence.s
