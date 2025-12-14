@@ -157,7 +157,7 @@ pub fn main() !void {
     average_branch_instructions /= @floatFromInt(try_count);
     average_branch_misses /= @floatFromInt(try_count);
     average_ras_misses /= @floatFromInt(try_count);
-    const average_miss_rate = average_branch_instructions / average_branch_misses;
+    const average_miss_rate = average_branch_misses / average_branch_instructions * 100.0;
 
     std.debug.print("\naverage_total_branches,average_branch_misses,average_miss_rate,averate_ras_misses\n", .{});
     std.debug.print(
