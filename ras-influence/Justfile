@@ -1,5 +1,7 @@
 JUST := just_executable()
 CORE := "2"
+IN := "main.zig"
+OUT := "build/main"
 
 set quiet
 
@@ -7,15 +9,15 @@ set quiet
 default:
 	{{JUST}} --list --unsorted --no-aliases
 
-build OUTPUT_NAME="main":
+build:
 	mkdir -p build/
-	zig build-exe main.zig \
+	zig build-exe {{IN}} \
 		-O ReleaseFast \
 		-fomit-frame-pointer \
-		-femit-bin=build/{{OUTPUT_NAME}}.a
-	objdump -d build/{{OUTPUT_NAME}}.a > build/{{OUTPUT_NAME}}.s
+		-femit-bin={{OUT}}.a
+	objdump -d {{OUT}}.a > {{OUT}}.s
 
-bench CALL_DEPTH CALL_AMOUNT="10000" REPEAT_TIMES="10" OUTPUT_NAME="main": build
+bench DEPTH AMOUNT="10000" REPEAT="10": build
 	#!/usr/bin/env bash
 	GOVERNANCE=$(cat /sys/devices/system/cpu/cpu{{CORE}}/cpufreq/scaling_governor)
 	THREADING=$(cat /sys/devices/system/cpu/smt/control)
@@ -26,8 +28,7 @@ bench CALL_DEPTH CALL_AMOUNT="10000" REPEAT_TIMES="10" OUTPUT_NAME="main": build
 	sudo \
 		chrt -f 99 \
 		taskset -c {{CORE}} \
-		build/{{OUTPUT_NAME}}.a {{CORE}} {{REPEAT_TIMES}} {{CALL_DEPTH}} {{CALL_AMOUNT}} \
-		2>&1 | column -t -s ',' -o ' | '
+		{{OUT}}.a {{CORE}} {{REPEAT}} {{DEPTH}} {{AMOUNT}}
 
 	echo $THREADING | sudo tee /sys/devices/system/cpu/smt/control > /dev/null
 	sudo cpupower -c {{CORE}} frequency-set -g $GOVERNANCE > /dev/null

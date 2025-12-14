@@ -64,15 +64,6 @@ pub fn main() !void {
     const fd_ras: linux.fd_t = @intCast(linux.perf_event_open(&ras_event, 0, used_core, -1, linux.PERF.FLAG.FD_NO_GROUP));
     std.debug.assert(fd_misses >= 0);
 
-    // STEP: reset perf metrics.
-
-    return_value = linux.ioctl(fd_branches, linux.PERF.EVENT_IOC.RESET, 0);
-    std.debug.assert(return_value == 0);
-    return_value = linux.ioctl(fd_misses, linux.PERF.EVENT_IOC.RESET, 0);
-    std.debug.assert(return_value == 0);
-    return_value = linux.ioctl(fd_ras, linux.PERF.EVENT_IOC.RESET, 0);
-    std.debug.assert(return_value == 0);
-
     // STEP: disable perf temporarily.
 
     return_value = linux.ioctl(fd_misses, linux.PERF.EVENT_IOC.DISABLE, 0);
@@ -93,8 +84,21 @@ pub fn main() !void {
 
     // STEP: start tasks benchmarking.
 
+    var average_branch_instructions: f64 = 0.0;
+    var average_branch_misses: f64 = 0.0;
+    var average_ras_misses: f64 = 0.0;
+
     std.debug.print("try_number,total_branches,branch_misses,miss_rate,ras_misses\n", .{});
     for (1..try_count + 1) |try_number| {
+        // STEP: reset perf metrics.
+
+        return_value = linux.ioctl(fd_branches, linux.PERF.EVENT_IOC.RESET, 0);
+        std.debug.assert(return_value == 0);
+        return_value = linux.ioctl(fd_misses, linux.PERF.EVENT_IOC.RESET, 0);
+        std.debug.assert(return_value == 0);
+        return_value = linux.ioctl(fd_ras, linux.PERF.EVENT_IOC.RESET, 0);
+        std.debug.assert(return_value == 0);
+
         // STEP: enable perf metrics.
 
         return_value = linux.ioctl(fd_misses, linux.PERF.EVENT_IOC.ENABLE, 0);
@@ -142,5 +146,22 @@ pub fn main() !void {
             "{d},{d},{d},{d:.2},{d}\n",
             .{ try_number, branch_instructions, branch_misses, miss_rate, ras_misses },
         );
+
+        // STEP: include average metrics.
+
+        average_branch_instructions += @floatFromInt(branch_instructions);
+        average_branch_misses += @floatFromInt(branch_misses);
+        average_ras_misses += @floatFromInt(ras_misses);
     }
+
+    average_branch_instructions /= @floatFromInt(try_count);
+    average_branch_misses /= @floatFromInt(try_count);
+    average_ras_misses /= @floatFromInt(try_count);
+    const average_miss_rate = average_branch_instructions / average_branch_misses;
+
+    std.debug.print("\naverage_total_branches,average_branch_misses,average_miss_rate,averate_ras_misses\n", .{});
+    std.debug.print(
+        "{d:.2},{d:.2},{d:.2},{d:.2}",
+        .{ average_branch_instructions, average_branch_misses, average_miss_rate, average_ras_misses },
+    );
 }
