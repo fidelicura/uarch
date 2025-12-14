@@ -12,30 +12,25 @@ build OUTPUT_NAME="main":
 	zig build-exe main.zig \
 		-O ReleaseFast \
 		-fomit-frame-pointer \
-		-femit-bin=build/{{OUTPUT_NAME}}.a \
-		-femit-asm=build/{{OUTPUT_NAME}}.s
-	objdump -d build/{{OUTPUT_NAME}}.a > build/{{OUTPUT_NAME}}.S
+		-femit-bin=build/{{OUTPUT_NAME}}.a
+	objdump -d build/{{OUTPUT_NAME}}.a > build/{{OUTPUT_NAME}}.s
 
-bench CALL_AMOUNT CALL_DEPTH REPEAT_TIMES="10" OUTPUT_NAME="main":
+bench CALL_DEPTH CALL_AMOUNT="10000" REPEAT_TIMES="10" OUTPUT_NAME="main": build
 	#!/usr/bin/env bash
 	GOVERNANCE=$(cat /sys/devices/system/cpu/cpu{{CORE}}/cpufreq/scaling_governor)
 	THREADING=$(cat /sys/devices/system/cpu/smt/control)
+
 	sudo cpupower -c {{CORE}} frequency-set -g performance > /dev/null
 	echo off | sudo tee /sys/devices/system/cpu/smt/control > /dev/null
+
 	sudo \
 		chrt -f 99 \
 		taskset -c {{CORE}} \
-		build/{{OUTPUT_NAME}}.a {{CORE}} {{CALL_DEPTH}} {{CALL_AMOUNT}}
-		# sh -c 'i=0; while [ $i -lt {{REPEAT_TIMES}} ]; do build/{{OUTPUT_NAME}}.a {{CALL_DEPTH}} {{CALL_AMOUNT}}; i=$((i+1)); done'
+		build/{{OUTPUT_NAME}}.a {{CORE}} {{REPEAT_TIMES}} {{CALL_DEPTH}} {{CALL_AMOUNT}} \
+		2>&1 | column -t -s ',' -o ' | '
+
 	echo $THREADING | sudo tee /sys/devices/system/cpu/smt/control > /dev/null
 	sudo cpupower -c {{CORE}} frequency-set -g $GOVERNANCE > /dev/null
-
-simulate TOTAL_AMOUNT="10000" WIDE_DEPTH="16" DEEP_DEPTH="32": clean
-	{{JUST}} build
-	sudo echo "~~~~~ WIDE: amount = {{TOTAL_AMOUNT}}, depth = {{WIDE_DEPTH}} ~~~~~"
-	{{JUST}} bench {{TOTAL_AMOUNT}} {{WIDE_DEPTH}}
-	echo "~~~~~ DEEP: amount = {{TOTAL_AMOUNT}}, depth = {{DEEP_DEPTH}} ~~~~~"
-	{{JUST}} bench {{TOTAL_AMOUNT}} {{DEEP_DEPTH}}
 
 clean:
 	rm -rf build/
