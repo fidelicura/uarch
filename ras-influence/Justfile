@@ -28,10 +28,13 @@ bench DEPTH AMOUNT="10000" REPEAT="10": build
 	sudo \
 		chrt -f 99 \
 		taskset -c {{CORE}} \
-		{{OUT}}.a {{CORE}} {{REPEAT}} {{DEPTH}} {{AMOUNT}}
+		{{OUT}}.a {{CORE}} {{REPEAT}} {{DEPTH}} {{AMOUNT}} \
+		&> {{OUT}}.csv
 
 	echo $THREADING | sudo tee /sys/devices/system/cpu/smt/control > /dev/null
 	sudo cpupower -c {{CORE}} frequency-set -g $GOVERNANCE > /dev/null
+
+	cat {{OUT}}.csv
 
 clean:
 	rm -rf build/
